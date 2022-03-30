@@ -1,0 +1,51 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql
+    container_name: wp_mysql
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - db_file:/var/lib/mysql
+    command: '--default-authentication-plugin=mysql_native_password'
+    networks:
+      - wp_net
+
+  php-fpm:
+    build: .
+    container_name: wp_php-fpm
+    depends_on:
+      - mysql
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - WORDPRESS_DB_HOST=mysql:3306
+      - WORDPRESS_DB_USER=$MYSQL_USER
+      - WORDPRESS_DB_PASSWORD=$MYSQL_PASSWORD
+      - WORDPRESS_DB_NAME=$MYSQL_DATABASE
+    volumes:
+      - ./wordpress:/var/www/wordpress
+    networks:
+      - wp_net
+
+  nginx:
+    image: nginx
+    container_name: wp_nginx
+    depends_on:
+      - php-fpm
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./wordpress:/var/www/wordpress
+      - ./conf.d:/etc/nginx/conf.d
+    networks:
+      - wp_net
+
+volumes:
+  db_file:
+
+networks:
+  wp_net:
+    driver: bridge
